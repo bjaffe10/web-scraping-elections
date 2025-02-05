@@ -50,6 +50,8 @@ while old_page_height != page_height:
     show_height_and_scroll(2)
     print("")
 
+time.sleep(3) # seconds
+
 print("")    
 print("**** **** top **** ****")
 print(driver.page_source[0:200])
@@ -58,27 +60,28 @@ print(driver.page_source[-200:])
 print("")
 print("total characters of html:" + str(len(driver.page_source)))
 
-# Extract all race cards
-race_cards = driver.find_elements(By.CLASS_NAME, "contest")
-print()
-print("found", str(len(race_cards)), "contests")
+# Extract all races
+races = driver.find_elements(By.CLASS_NAME, "contest")
+# print()
+# print("found", str(len(races)), "contests")
 
 # Dictionary to store results
 election_results = {}
 
-for race in race_cards:
+for race in races:
     # Extract race title
     race_title = race.find_element(By.CLASS_NAME, "contest-name").text.strip()
     election_results[race_title] = []
 
     # Extract candidates & vote counts
-    candidate_rows = race.find_elements(By.CLASS_NAME, "align-items-top")
+    candidate_rows = race.find_elements(By.CLASS_NAME, "row.align-items-top")
+    # print(str(len(candidate_rows)), "candidates in race:", race_title)
     for candidate_row in candidate_rows:
         try:
-            party = candidate_row.find_element(By.CLASS_NAME, "party-name").text.strip()
-            name = candidate_row.find_element(By.CLASS_NAME, "summary-item-name").text.strip()
-            votes = candidate_row.find_element(By.CLASS_NAME, "summary-item-value").text.strip()
-            election_results[race_title].append({"candidate": name, "votes": votes})
+            party = candidate_row.find_element(By.CLASS_NAME, "badge.bg-info.party-name").text
+            name = candidate_row.find_element(By.CLASS_NAME, "col-6.d-inline-flex.col-9").find_elements(By.TAG_NAME, "div")[1].text
+            votes = candidate_row.find_elements(By.CLASS_NAME, "col.text-end.pl-0")[1].text.strip()
+            election_results[race_title].append({"candidate": name, "party": party, "votes": votes})
         except:
             continue  # Skip any malformed entries
 
