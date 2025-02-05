@@ -24,7 +24,7 @@ delay = 5 # seconds
 # load page
 try:
     myElem = WebDriverWait(driver, delay).until(ec.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Last updated')]")))
-    print("Page is ready!")
+    print("Page appears to be loading...\n")
 except TimeoutException:
     print("Loading took too much time!")
 
@@ -50,28 +50,20 @@ while old_page_height != page_height:
     show_height_and_scroll(2)
     print("")
 
-time.sleep(3) # seconds
-
-print("")    
-print("**** **** top **** ****")
-print(driver.page_source[0:200])
-print("**** **** bottom **** ****")
-print(driver.page_source[-200:])
-print("")
-print("total characters of html:" + str(len(driver.page_source)))
+time.sleep(2) # seconds
+print("Page load complete. Scraping data...\n")
 
 # Extract all races
 races = driver.find_elements(By.CLASS_NAME, "contest")
-# print()
-# print("found", str(len(races)), "contests")
 
 # Dictionary to store results
-election_results = {}
+election_data = {}
 
 for race in races:
     # Extract race title
     race_title = race.find_element(By.CLASS_NAME, "contest-name").text.strip()
-    election_results[race_title] = []
+    votes_per_person = int(race.find_element(By.CLASS_NAME, "fss.text-nowrap").find_elements(By.TAG_NAME, "strong")[0].text)
+    election_data[race_title] = {"votes_per_person": votes_per_person, "results": []}
 
     # Extract candidates & vote counts
     candidate_rows = race.find_elements(By.CLASS_NAME, "row.align-items-top")
@@ -80,13 +72,17 @@ for race in races:
         try:
             party = candidate_row.find_element(By.CLASS_NAME, "badge.bg-info.party-name").text
             name = candidate_row.find_element(By.CLASS_NAME, "col-6.d-inline-flex.col-9").find_elements(By.TAG_NAME, "div")[1].text
-            votes = candidate_row.find_elements(By.CLASS_NAME, "col.text-end.pl-0")[1].text.strip()
-            election_results[race_title].append({"candidate": name, "party": party, "votes": votes})
+            votes = int(candidate_row.find_elements(By.CLASS_NAME, "col.text-end.pl-0")[1].text.strip().replace(",", ""))
+            election_data[race_title]["results"].append({"candidate": name, "party": party, "votes": votes})
         except:
             continue  # Skip any malformed entries
 
-for race, candidates in election_results.items():
-    print(f"Race: {race}")
-    for candidate in candidates:
-        print(f"  {candidate['candidate']}: {candidate['votes']} votes")
+for race_title, data in election_data.items():
+    print(f"{race_title} ({data['votes_per_person']} vote(s) per person)")
+    for candidate in sorted(data["results"], key=lambda d: d['votes'], reverse=True):
+        if candidate["party"] not in [None, " ", ""]:
+            party = " (" + candidate["party"] + ")"
+        else:
+            party = ""
+        print('{:<30}  {:>7}'.format(f"{candidate['candidate']}{party}:", f"{candidate['votes']:,}"))
     print()
