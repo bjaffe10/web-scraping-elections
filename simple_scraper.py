@@ -1,4 +1,5 @@
 import time
+import json
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 # from selenium.webdriver.common.keys import Keys
@@ -50,39 +51,46 @@ while old_page_height != page_height:
     show_height_and_scroll(2)
     print("")
 
-time.sleep(2) # seconds
+time.sleep(4) # seconds
 print("Page load complete. Scraping data...\n")
 
 # Extract all races
-races = driver.find_elements(By.CLASS_NAME, "contest")
+races = driver.find_elements(By.CLASS_NAME, "card.contest")
+print("Number of races:", str(len(races)), "\n")
 
 # Dictionary to store results
-election_data = {}
+election_data = {"races": []}
 
 for race in races:
-    # Extract race title
+    # Extract race title and number of votes allowed by each person
     race_title = race.find_element(By.CLASS_NAME, "contest-name").text.strip()
     votes_per_person = int(race.find_element(By.CLASS_NAME, "fss.text-nowrap").find_elements(By.TAG_NAME, "strong")[0].text)
-    election_data[race_title] = {"votes_per_person": votes_per_person, "results": []}
 
     # Extract candidates & vote counts
     candidate_rows = race.find_elements(By.CLASS_NAME, "row.align-items-top")
-    # print(str(len(candidate_rows)), "candidates in race:", race_title)
+
+    results = []
     for candidate_row in candidate_rows:
         try:
             party = candidate_row.find_element(By.CLASS_NAME, "badge.bg-info.party-name").text
             name = candidate_row.find_element(By.CLASS_NAME, "col-6.d-inline-flex.col-9").find_elements(By.TAG_NAME, "div")[1].text
             votes = int(candidate_row.find_elements(By.CLASS_NAME, "col.text-end.pl-0")[1].text.strip().replace(",", ""))
-            election_data[race_title]["results"].append({"candidate": name, "party": party, "votes": votes})
+            results.append({"candidate": name, "party": party, "votes": votes})
         except:
             continue  # Skip any malformed entries
 
-for race_title, data in election_data.items():
-    print(f"{race_title} ({data['votes_per_person']} vote(s) per person)")
-    for candidate in sorted(data["results"], key=lambda d: d['votes'], reverse=True):
+    election_data["races"].append({"race_title": race_title, "votes_per_person": votes_per_person, "results": results})
+
+for race in election_data["races"]:
+
+    print(f"{race['race_title']} ({race['votes_per_person']} vote(s) per person)")
+    for candidate in sorted(race["results"], key=lambda d: d['votes'], reverse=True):
         if candidate["party"] not in [None, " ", ""]:
             party = " (" + candidate["party"] + ")"
         else:
             party = ""
-        print('{:<30}  {:>7}'.format(f"{candidate['candidate']}{party}:", f"{candidate['votes']:,}"))
+        print("   ", '{:<30}  {:>7}'.format(f"{candidate['candidate']}{party}:", f"{candidate['votes']:,}"))
     print()
+
+# print("Complete election data:\n")
+# print(json.dumps(election_data, indent=4))
